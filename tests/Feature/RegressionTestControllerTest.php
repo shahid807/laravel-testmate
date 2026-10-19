@@ -51,7 +51,7 @@ class RegressionTestControllerTest extends TestCase
                 && str_contains($diff, '+return $price + $quantity;');
         });
 
-        $response->assertSee('Code Changes (Unified Diff)');
+        $response->assertSee('Code Changes (Unified Diff)', false);
         $response->assertSee('-return $price * $quantity;');
         $response->assertSee('+return $price + $quantity;');
 

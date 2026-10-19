@@ -234,6 +234,48 @@
 @endisset
 
 
+@isset($testSelection)
+    <div class="panel">
+        <h2>Change-Based Test Selection</h2>
+
+        <p>
+            Test files are recommended using a lightweight
+            method-name matching heuristic. These suggestions
+            do not confirm actual test dependencies.
+        </p>
+
+        <h3>Changed Methods</h3>
+
+        @if (count($testSelection['changed_methods']) > 0)
+            <ul>
+                @foreach ($testSelection['changed_methods'] as $method)
+                    <li><code>{{ $method }}</code></li>
+                @endforeach
+            </ul>
+        @else
+            <p>No changed methods detected by the current heuristic.</p>
+        @endif
+
+        <h3>Recommended Test Files</h3>
+
+        @if (count($testSelection['recommended_tests']) > 0)
+            @foreach ($testSelection['recommended_tests'] as $test)
+                <div class="risk-card">
+                    <strong>{{ $test['file'] }}</strong>
+                    <p>Match score: {{ $test['score'] }}</p>
+                    <p>{{ $test['reason'] }}</p>
+                </div>
+            @endforeach
+        @else
+            <p>
+                No matching test files were found by the current
+                heuristic. This does not mean that no tests are affected.
+            </p>
+        @endif
+    </div>
+@endisset
+
+
 @if (isset($riskScore, $riskLevel))
     <div class="risk-card">
         <h3>Regression Risk Score</h3>

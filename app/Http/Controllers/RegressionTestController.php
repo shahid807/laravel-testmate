@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\CodeDiffService;
+use App\Services\TestSelectionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -19,7 +20,8 @@ class RegressionTestController extends Controller
 
     public function analyze(
         Request $request,
-        CodeDiffService $codeDiffService
+        CodeDiffService $codeDiffService,
+        TestSelectionService $testSelectionService
     ): View|RedirectResponse {
         set_time_limit(120);
         $validated = $request->validate([
@@ -45,6 +47,11 @@ class RegressionTestController extends Controller
             $updatedCode
         );
 
+        $testSelection = $testSelectionService->select(
+    $originalCode,
+    $updatedCode
+);
+
         $changeDescription = $diff === ''
             ? 'No code changes detected. The original and updated code are identical.'
             : $diff;
@@ -55,6 +62,7 @@ class RegressionTestController extends Controller
                 'updatedCode' => $updatedCode,
                 'diff' => '',
                 'analysis' => 'No code changes detected. Both code versions are identical. No AI analysis was needed.',
+                'testSelection' => $testSelection,
             ]);
         }
 
@@ -181,6 +189,7 @@ PROMPT;
                 'updatedCode' => $updatedCode,
                 'diff' => $diff,
                 'analysis' => $analysis,
+                'testSelection' => $testSelection,
                 'analysisHtml' => $analysisHtml,
                 'riskScore' => $riskScore,
                 'riskLevel' => $riskLevel,
