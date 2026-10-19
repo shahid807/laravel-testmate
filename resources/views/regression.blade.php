@@ -85,6 +85,92 @@
     color: #d1d5db;
 }
 
+.analysis-output {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    background: #ffffff;
+    color: #1f2937;
+    padding: 8px;
+    margin: 0;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font: 14px/1.7 Arial, sans-serif;
+}
+
+.risk-card {
+    padding: 16px;
+    margin-bottom: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+}
+
+.risk-card h3 {
+    margin: 0 0 8px;
+}
+
+.risk-score {
+    margin: 0;
+    font-size: 32px;
+    font-weight: bold;
+}
+
+.risk-score span {
+    font-size: 16px;
+    color: #6b7280;
+}
+
+.risk-level {
+    font-weight: bold;
+}
+
+.risk-low {
+    color: #15803d;
+}
+
+.risk-medium {
+    color: #b45309;
+}
+
+.risk-high {
+    color: #b91c1c;
+}
+
+
+.risk-progress {
+    width: 100%;
+    height: 10px;
+    margin: 12px 0;
+    overflow: hidden;
+    background: #e5e7eb;
+    border-radius: 999px;
+}
+
+.risk-progress-bar {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.3s ease;
+}
+
+.risk-bar-low {
+    background: #16a34a;
+}
+
+.risk-bar-medium {
+    background: #d97706;
+}
+
+.risk-bar-high {
+    background: #dc2626;
+}
+
+.risk-note {
+    margin-bottom: 0;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+
     </style>
 </head>
 <body>
@@ -142,21 +228,49 @@
         @if ($diff === '')
             <p>No code changes detected. Both code versions are identical.</p>
         @else
-           <pre class="diff-output">
-                @foreach (preg_split('/\r\n|\r|\n/', $diff) as $line)
-                <span class="{{ str_starts_with($line, '+') && !str_starts_with($line, '+++') ? 'diff-added' : (str_starts_with($line, '-') && !str_starts_with($line, '---') ? 'diff-removed' : 'diff-context') }}">{{ $line }}</span>{{ "\n" }}
-                @endforeach
-            </pre>
+           <pre class="diff-output">@foreach (preg_split('/\r\n|\r|\n/', $diff) as $line)<span class="{{ str_starts_with($line, '+') && !str_starts_with($line, '+++') ? 'diff-added' : (str_starts_with($line, '-') && !str_starts_with($line, '---') ? 'diff-removed' : 'diff-context') }}">{{ $line }}</span>{{ "\n" }}@endforeach</pre>
         @endif
     </div>
 @endisset
 
 
-    @isset($analysis)
+@if (isset($riskScore, $riskLevel))
+    <div class="risk-card">
+        <h3>Regression Risk Score</h3>
+
+        <div class="risk-score">
+            {{ $riskScore }}<span>/100</span>
+        </div>
+
+        <p class="risk-level risk-{{ strtolower($riskLevel) }}">
+            {{ $riskLevel }} Risk
+        </p>
+
+        <div
+            class="risk-progress"
+            role="progressbar"
+            aria-label="Regression risk score"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow="{{ $riskScore }}"
+        >
+            <div
+                class="risk-progress-bar risk-bar-{{ strtolower($riskLevel) }}"
+                style="width: {{ $riskScore }}%;"
+            ></div>
+        </div>
+
+        <p class="risk-note">
+            AI-generated estimate, not a validated prediction.
+        </p>
+    </div>
+@endif
+
+    @isset($analysisHtml)
         <div class="panel">
             <h2>Regression Analysis</h2>
             <p>These are AI-generated recommendations. No tests have been executed by this analysis.</p>
-            <pre>{{ $analysis }}</pre>
+            <pre class="analysis-output">{!! $analysisHtml !!}</pre>
         </div>
     @endisset
 </body>
