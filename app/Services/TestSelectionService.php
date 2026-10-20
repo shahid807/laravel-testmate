@@ -3,6 +3,12 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\File;
+use PhpParser\Error;
+use PhpParser\Node\Stmt\ClassMethod;
+use PhpParser\Node\Stmt\Function_;
+use PhpParser\NodeFinder;
+use PhpParser\ParserFactory;
+use PhpParser\PrettyPrinter\Standard;
 
 class TestSelectionService
 {
@@ -78,9 +84,8 @@ class TestSelectionService
     }
 
     /**
-     * Find method names whose method bodies were added, removed, or changed.
-     *
-     * This lightweight implementation is intended for simple PHP methods.
+     * Find methods or named functions whose bodies were added, removed,
+     * or changed.
      *
      * @return array<int, string>
      */
@@ -100,8 +105,8 @@ class TestSelectionService
 
         foreach ($methodNames as $name) {
             if (
-                ! isset($originalMethods[$name])
-                || ! isset($updatedMethods[$name])
+                ! array_key_exists($name, $originalMethods)
+                || ! array_key_exists($name, $updatedMethods)
                 || $originalMethods[$name] !== $updatedMethods[$name]
             ) {
                 $changed[] = $name;
@@ -112,57 +117,49 @@ class TestSelectionService
     }
 
     /**
-     * Extract method bodies using a basic regular expression.
-     *
-     * Note: Regex is not a full PHP parser and may not handle every syntax.
+     * Extract method and named-function bodies using PHP AST parsing.
      *
      * @return array<string, string>
      */
     private function extractMethods(string $code): array
     {
-        preg_match_all(
-            '/function\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)\s*(?::\s*[^{]+)?\s*\{/s',
-            $code,
-            $matches,
-            PREG_OFFSET_CAPTURE
-        );
+        try {
+            $parser = (new ParserFactory)
+                ->createForNewestSupportedVersion();
 
-        $methods = [];
+            $ast = $parser->parse($code);
 
-        foreach ($matches[1] as $index => $match) {
-            $name = $match[0];
-            $openingBrace = strpos(
-                $code,
-                '{',
-                $matches[0][$index][1]
-            );
-
-            if ($openingBrace === false) {
-                continue;
+            if ($ast === null) {
+                return [];
             }
 
-            $depth = 0;
-            $length = strlen($code);
+            $finder = new NodeFinder;
+            $printer = new Standard;
 
-            for ($i = $openingBrace; $i < $length; $i++) {
-                if ($code[$i] === '{') {
-                    $depth++;
-                } elseif ($code[$i] === '}') {
-                    $depth--;
+            $nodes = [
+                ...$finder->findInstanceOf($ast, ClassMethod::class),
+                ...$finder->findInstanceOf($ast, Function_::class),
+            ];
 
-                    if ($depth === 0) {
-                        $methods[$name] = substr(
-                            $code,
-                            $openingBrace,
-                            $i - $openingBrace + 1
-                        );
+            $methods = [];
 
-                        break;
-                    }
+            foreach ($nodes as $node) {
+                $name = $node->name->toString();
+
+                // Abstract methods and declarations without bodies.
+                if ($node->stmts === null) {
+                    $body = '';
+                } else {
+                    $body = $printer->prettyPrint($node->stmts);
                 }
-            }
-        }
 
-        return $methods;
+                $methods[$name] = $body;
+            }
+
+            return $methods;
+        } catch (Error) {
+            // Invalid or incomplete PHP input should not crash the request.
+            return [];
+        }
     }
 }

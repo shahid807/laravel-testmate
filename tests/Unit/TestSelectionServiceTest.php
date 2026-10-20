@@ -64,19 +64,18 @@ PHP;
         $this->assertSame([], $result['changed_methods']);
     }
 
-   
-public function test_it_recommends_a_test_file_referencing_a_changed_method(): void
-{
-    $testDirectory = base_path('tests/Unit');
-    $temporaryFile = $testDirectory.'/CalculatorTest.php';
+    public function test_it_recommends_a_test_file_referencing_a_changed_method(): void
+    {
+        $testDirectory = base_path('tests/Unit');
+        $temporaryFile = $testDirectory.'/CalculatorTest.php';
 
-    file_put_contents(
-        $temporaryFile,
-        '<?php class CalculatorTest { public function test_calculateTotal() {} }'
-    );
+        file_put_contents(
+            $temporaryFile,
+            '<?php class CalculatorTest { public function test_calculateTotal() {} }'
+        );
 
-    try {
-        $originalCode = <<<'PHP'
+        try {
+            $originalCode = <<<'PHP'
 <?php
 class Calculator
 {
@@ -87,7 +86,7 @@ class Calculator
 }
 PHP;
 
-        $updatedCode = <<<'PHP'
+            $updatedCode = <<<'PHP'
 <?php
 class Calculator
 {
@@ -98,23 +97,55 @@ class Calculator
 }
 PHP;
 
-        $service = app(\App\Services\TestSelectionService::class);
-        $result = $service->select($originalCode, $updatedCode);
+            $service = app(TestSelectionService::class);
+            $result = $service->select($originalCode, $updatedCode);
 
-        $recommendedFiles = array_column(
-            $result['recommended_tests'],
-            'file'
-        );
+            $recommendedFiles = array_column(
+                $result['recommended_tests'],
+                'file'
+            );
 
-        $this->assertContains(
-            'tests'.DIRECTORY_SEPARATOR.'Unit'.DIRECTORY_SEPARATOR.'CalculatorTest.php',
-            $recommendedFiles
-        );
-    } finally {
-        if (file_exists($temporaryFile)) {
-            unlink($temporaryFile);
+            $this->assertContains(
+                'tests'.DIRECTORY_SEPARATOR.'Unit'.DIRECTORY_SEPARATOR.'CalculatorTest.php',
+                $recommendedFiles
+            );
+        } finally {
+            if (file_exists($temporaryFile)) {
+                unlink($temporaryFile);
+            }
         }
     }
-}
 
+    public function test_it_detects_changes_when_method_contains_braces_in_strings(): void
+    {
+        $originalCode = <<<'PHP'
+<?php
+
+class Example
+{
+    public function getText(): string
+    {
+        return '}';
+    }
+}
+PHP;
+
+        $updatedCode = <<<'PHP'
+<?php
+
+class Example
+{
+    public function getText(): string
+    {
+        return '{';
+    }
+}
+PHP;
+
+        $service = app(TestSelectionService::class);
+
+        $result = $service->select($originalCode, $updatedCode);
+
+        $this->assertContains('getText', $result['changed_methods']);
+    }
 }

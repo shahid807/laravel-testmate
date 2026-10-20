@@ -48,9 +48,9 @@ class RegressionTestController extends Controller
         );
 
         $testSelection = $testSelectionService->select(
-    $originalCode,
-    $updatedCode
-);
+            $originalCode,
+            $updatedCode
+        );
 
         $changeDescription = $diff === ''
             ? 'No code changes detected. The original and updated code are identical.'
