@@ -103,4 +103,44 @@ PHP;
 
         $this->assertSame([], $callers);
     }
+
+    
+public function test_it_documents_name_based_matching_across_classes(): void
+{
+    $code = <<<'PHP'
+<?php
+
+class InvoiceService
+{
+    public function calculateInvoice(): float
+    {
+        return $this->calculateTotal();
+    }
+}
+
+class UnrelatedReport
+{
+    public function calculateTotal(): float
+    {
+        return 10;
+    }
+
+    public function generateReport(): float
+    {
+        return $this->calculateTotal();
+    }
+}
+PHP;
+
+    $analyzer = new PhpDependencyAnalyzer();
+
+    $callers = $analyzer->findCallers(
+        $code,
+        ['calculateTotal']
+    );
+
+    $this->assertContains('calculateInvoice', $callers);
+    $this->assertContains('generateReport', $callers);
+}
+
 }
