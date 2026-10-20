@@ -125,4 +125,54 @@ class RegressionTestControllerTest extends TestCase
 
         Http::assertSentCount(0);
     }
+
+    public function test_regression_analysis_handles_openrouter_error(): void
+    {
+        config([
+            'services.openrouter.key' => 'test-key',
+            'services.openrouter.model' => 'openrouter/free',
+        ]);
+
+        Http::fake([
+            'openrouter.ai/api/v1/chat/completions' => Http::response([
+                'error' => ['message' => 'Test API error'],
+            ], 502),
+        ]);
+
+        $response = $this->from('/regression')
+            ->post('/regression/analyze', [
+                'original_code' => 'return 10;',
+                'updated_code' => 'return 20;',
+            ]);
+
+        $response->assertRedirect('/regression');
+        $response->assertSessionHasErrors([
+            'original_code' => 'Test API error',
+        ]);
+    }
+
+    public function test_regression_analysis_handles_network_exception(): void
+    {
+        config([
+            'services.openrouter.key' => 'test-key',
+            'services.openrouter.model' => 'openrouter/free',
+        ]);
+
+        Http::fake([
+            'openrouter.ai/api/v1/chat/completions' => function () {
+                throw new \RuntimeException('Connection failed');
+            },
+        ]);
+
+        $response = $this->from('/regression')
+            ->post('/regression/analyze', [
+                'original_code' => 'return 10;',
+                'updated_code' => 'return 20;',
+            ]);
+
+        $response->assertRedirect('/regression');
+        $response->assertSessionHasErrors([
+            'original_code' => 'The analysis request failed. Please try again.',
+        ]);
+    }
 }

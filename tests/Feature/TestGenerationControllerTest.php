@@ -122,4 +122,26 @@ class TestGenerationControllerTest extends TestCase
             'code' => 'The model returned an empty response.',
         ]);
     }
+
+    public function test_generation_handles_network_exception(): void
+    {
+        config([
+            'services.openrouter.key' => 'test-key',
+            'services.openrouter.model' => 'openrouter/free',
+        ]);
+
+        Http::fake([
+            'openrouter.ai/api/v1/chat/completions' => function () {
+                throw new \RuntimeException('Connection failed');
+            },
+        ]);
+
+        $response = $this->from('/')
+            ->post('/generate-tests', ['code' => 'some PHP code']);
+
+        $response->assertRedirect('/');
+        $response->assertSessionHasErrors([
+            'code' => 'The request failed. Check your connection and try again.',
+        ]);
+    }
 }

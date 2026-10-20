@@ -53,6 +53,8 @@
     <h1>Laravel TestMate</h1>
     <p>Generate PHPUnit test suggestions for your Laravel and PHP code.</p>
 
+     <p><a href="{{ route('regression.index') }}">Open regression testing</a></p>
+
     <div class="panel">
         @if ($errors->any())
             <div class="error">
