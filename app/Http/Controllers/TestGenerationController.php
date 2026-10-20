@@ -20,6 +20,7 @@ class TestGenerationController extends Controller
         $validated = $request->validate([
             'code' => ['required', 'string', 'max:12000'],
         ]);
+        set_time_limit(120);
 
         $apiKey = config('services.openrouter.key');
 

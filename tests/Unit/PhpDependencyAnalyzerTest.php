@@ -26,7 +26,7 @@ class InvoiceService
 }
 PHP;
 
-        $analyzer = new PhpDependencyAnalyzer();
+        $analyzer = new PhpDependencyAnalyzer;
 
         $callers = $analyzer->findCallers(
             $code,
@@ -58,7 +58,7 @@ class TaxCalculator
 }
 PHP;
 
-        $analyzer = new PhpDependencyAnalyzer();
+        $analyzer = new PhpDependencyAnalyzer;
 
         $callers = $analyzer->findCallers(
             $code,
@@ -82,7 +82,7 @@ class InvoiceService
 }
 PHP;
 
-        $analyzer = new PhpDependencyAnalyzer();
+        $analyzer = new PhpDependencyAnalyzer;
 
         $callers = $analyzer->findCallers(
             $code,
@@ -94,7 +94,7 @@ PHP;
 
     public function test_it_returns_no_callers_for_an_empty_target_list(): void
     {
-        $analyzer = new PhpDependencyAnalyzer();
+        $analyzer = new PhpDependencyAnalyzer;
 
         $callers = $analyzer->findCallers(
             '<?php class Example {}',
@@ -104,10 +104,9 @@ PHP;
         $this->assertSame([], $callers);
     }
 
-    
-public function test_it_documents_name_based_matching_across_classes(): void
-{
-    $code = <<<'PHP'
+    public function test_it_documents_name_based_matching_across_classes(): void
+    {
+        $code = <<<'PHP'
 <?php
 
 class InvoiceService
@@ -132,15 +131,80 @@ class UnrelatedReport
 }
 PHP;
 
-    $analyzer = new PhpDependencyAnalyzer();
+        $analyzer = new PhpDependencyAnalyzer;
 
-    $callers = $analyzer->findCallers(
-        $code,
-        ['calculateTotal']
-    );
+        $callers = $analyzer->findCallers(
+            $code,
+            ['calculateTotal']
+        );
 
-    $this->assertContains('calculateInvoice', $callers);
-    $this->assertContains('generateReport', $callers);
+        $this->assertContains('calculateInvoice', $callers);
+        $this->assertContains('generateReport', $callers);
+    }
+
+    public function test_it_ignores_method_names_inside_comments_and_strings(): void
+    {
+        $code = <<<'PHP'
+<?php
+
+class Example
+{
+    public function generateReport(): string
+    {
+        // $this->calculateTotal();
+
+        $text = '$this->calculateTotal()';
+
+        return $text;
+    }
 }
+PHP;
 
+        $analyzer = new PhpDependencyAnalyzer;
+
+        $callers = $analyzer->findCallers(
+            $code,
+            ['calculateTotal']
+        );
+
+        $this->assertSame([], $callers);
+    }
+
+    public function test_it_returns_no_callers_for_invalid_php(): void
+    {
+        $analyzer = new PhpDependencyAnalyzer;
+
+        $callers = $analyzer->findCallers(
+            '<?php class Example { public function broken( {',
+            ['calculateTotal']
+        );
+
+        $this->assertSame([], $callers);
+    }
+
+    public function test_it_does_not_treat_a_nested_closure_call_as_an_outer_method_dependency(): void
+    {
+        $code = <<<'PHP'
+<?php
+
+class Example
+{
+    public function generateReport(): void
+    {
+        $callback = function () {
+            $this->calculateTotal();
+        };
+    }
+}
+PHP;
+
+        $analyzer = new PhpDependencyAnalyzer;
+
+        $callers = $analyzer->findCallers(
+            $code,
+            ['calculateTotal']
+        );
+
+        $this->assertSame([], $callers);
+    }
 }

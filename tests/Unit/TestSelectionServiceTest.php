@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Services\TestSelectionService;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 class TestSelectionServiceTest extends TestCase
@@ -149,14 +150,13 @@ PHP;
         $this->assertContains('getText', $result['changed_methods']);
     }
 
-    
-public function test_it_finds_dependency_callers_and_returns_them_in_results(): void
-{
-    $fixturePath = app_path(
-        'Services/DependencyFixture'.uniqid().'.php'
-    );
+    public function test_it_finds_dependency_callers_and_returns_them_in_results(): void
+    {
+        $fixturePath = app_path(
+            'Services/DependencyFixture'.uniqid().'.php'
+        );
 
-    $fixtureCode = <<<'PHP'
+        $fixtureCode = <<<'PHP'
 <?php
 
 class DependencyFixture
@@ -173,17 +173,17 @@ class DependencyFixture
 }
 PHP;
 
-    \Illuminate\Support\Facades\File::put(
-        $fixturePath,
-        $fixtureCode
-    );
-
-    try {
-        $service = app(
-            \App\Services\TestSelectionService::class
+        File::put(
+            $fixturePath,
+            $fixtureCode
         );
 
-        $originalCode = <<<'PHP'
+        try {
+            $service = app(
+                TestSelectionService::class
+            );
+
+            $originalCode = <<<'PHP'
 <?php
 
 class InvoiceService
@@ -200,7 +200,7 @@ class InvoiceService
 }
 PHP;
 
-        $updatedCode = <<<'PHP'
+            $updatedCode = <<<'PHP'
 <?php
 
 class InvoiceService
@@ -217,23 +217,58 @@ class InvoiceService
 }
 PHP;
 
-        $result = $service->select(
-            $originalCode,
-            $updatedCode
-        );
+            $result = $service->select(
+                $originalCode,
+                $updatedCode
+            );
 
-        $this->assertContains(
-            'calculateInvoice',
-            $result['dependency_callers']
-        );
+            $this->assertContains(
+                'calculateInvoice',
+                $result['dependency_callers']
+            );
 
-        $this->assertArrayHasKey(
-            'recommended_tests',
-            $result
-        );
-    } finally {
-        \Illuminate\Support\Facades\File::delete($fixturePath);
+            $this->assertArrayHasKey(
+                'recommended_tests',
+                $result
+            );
+        } finally {
+            File::delete($fixturePath);
+        }
+    }
+
+    public function test_it_detects_a_return_type_change(): void
+    {
+        $originalCode = <<<'PHP'
+<?php
+
+class Calculator
+{
+    public function calculateTotal(float $price): int
+    {
+        return 100;
     }
 }
+PHP;
 
+        $updatedCode = <<<'PHP'
+<?php
+
+class Calculator
+{
+    public function calculateTotal(float $price): float
+    {
+        return 100;
+    }
+}
+PHP;
+
+        $service = app(TestSelectionService::class);
+
+        $result = $service->select($originalCode, $updatedCode);
+
+        $this->assertContains(
+            'calculateTotal',
+            $result['changed_methods']
+        );
+    }
 }

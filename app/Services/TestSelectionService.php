@@ -92,8 +92,7 @@ class TestSelectionService
 
         usort(
             $recommendations,
-            fn (array $a, array $b): int =>
-                $b['score'] <=> $a['score']
+            fn (array $a, array $b): int => $b['score'] <=> $a['score']
         );
 
         return [
@@ -108,7 +107,7 @@ class TestSelectionService
      *
      * This is name-based analysis, not complete type resolution.
      *
-     * @param array<int, string> $changedMethods
+     * @param  array<int, string>  $changedMethods
      * @return array<int, string>
      */
     private function findProjectCallers(array $changedMethods): array
@@ -139,8 +138,7 @@ class TestSelectionService
 
         $callers = array_filter(
             array_unique($callers),
-            fn (string $caller): bool =>
-                ! in_array(strtolower($caller), $changedNames, true)
+            fn (string $caller): bool => ! in_array(strtolower($caller), $changedNames, true)
         );
 
         return array_values($callers);
@@ -149,7 +147,7 @@ class TestSelectionService
     /**
      * Add filename/content matching evidence to a test's score.
      *
-     * @param array<int, string> $reasons
+     * @param  array<int, string>  $reasons
      */
     private function addMethodEvidence(
         string $method,
@@ -243,7 +241,7 @@ class TestSelectionService
                     $body = $printer->prettyPrint($node->stmts);
                 }
 
-                $methods[$name] = $body;
+                $methods[$name] = $printer->prettyPrint([$node]);
             }
 
             return $methods;
