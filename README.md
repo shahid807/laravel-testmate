@@ -1,58 +1,156 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel TestMate
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel TestMate is a research-oriented prototype exploring how static code analysis and Large Language Models (LLMs) can support regression testing and software maintenance in PHP applications.
 
-## About Laravel
+The project combines PHP Abstract Syntax Tree (AST) analysis, code-diff inspection, heuristic test selection, regression risk assessment, and LLM-assisted code analysis.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Research Question
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+**Can dependency-aware code analysis combined with LLM-based reasoning improve regression-test selection compared with simple name-matching heuristics, while reducing unnecessary test execution?**
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Laravel TestMate is an experimental prototype. Its effectiveness has not yet been established through a formal benchmark.
 
-## Learning Laravel
+## Features
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- **Code Diff Analysis:** Identifies changed lines between two code versions.
+- **Changed-Method Detection:** Uses PHP AST parsing to identify methods affected by code changes.
+- **Change-Based Test Selection:** Recommends candidate test files using changed-method names and references found in test files.
+- **Dependency-Aware Test Selection:** Identifies potential callers of changed methods and incorporates them into candidate test scoring.
+- **Regression Risk Assessment:** Analyzes code changes and presents risk scores, risk levels, and AI-assisted recommendations.
+- **AI-Assisted Regression Analysis:** Uses an OpenRouter-compatible LLM API to analyze code changes and provide recommendations.
+- **AI Test Generation:** Generates candidate tests from supplied source code.
+- **Input and API Error Handling:** Handles missing inputs, missing API configuration, empty model responses, and API errors.
+- **Automated Testing:** Includes unit and feature tests covering core application workflows.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Technology Stack
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+- **PHP and Laravel:** Application framework and backend implementation.
+- **nikic/php-parser:** AST-based PHP code analysis.
+- **sebastian/diff:** Code-diff processing.
+- **OpenRouter-compatible API:** LLM-assisted regression analysis and test generation.
+- **PHPUnit:** Automated unit and feature testing.
 
-## Agentic Development
+## How It Works
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+1. The user provides code versions for regression analysis.
+2. TestMate compares the versions and identifies changed lines.
+3. AST-based analysis identifies changed methods.
+4. The dependency analyzer searches for potential callers of those methods.
+5. The test-selection service examines application code and test files.
+6. Heuristic scoring ranks candidate tests based on changed methods and potential dependency callers.
+7. The application provides regression analysis, risk assessment, candidate test recommendations, and AI-generated test suggestions through the relevant workflows.
+
+The dependency-aware analysis is lightweight and name-based. It does not construct a complete semantic dependency graph.
+
+## Requirements
+
+- PHP and Composer versions compatible with the project's dependencies.
+- Node.js and npm if frontend assets need to be built.
+- An OpenRouter API key for AI-powered features.
+
+Check `composer.json` and `package.json` for the exact dependency and runtime requirements.
+
+## Installation
+
+### 1. Clone the Repository
+
+Replace the placeholder below with the actual repository URL:
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+git clone <YOUR_REPOSITORY_URL>
+cd laravel-testmate
+composer install
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+### 2. Configure the Environment
 
-## Contributing
+Create your local environment file and generate the Laravel application key:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-## Code of Conduct
+Configure the OpenRouter API key in `.env`, using the environment-variable name expected by the application.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 3. Build Frontend Assets
 
-## Security Vulnerabilities
+If frontend dependencies are required:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+npm install
+npm run build
+```
+
+### 4. Start the Development Server
+
+```bash
+php artisan serve
+```
+
+Open the local URL displayed in the terminal.
+
+**Security:** Never commit `.env` or publish API keys, passwords, or other credentials. Keep secret values out of source code and version control.
+
+## Running Tests
+
+Run the complete test suite:
+
+```bash
+php artisan test
+```
+
+For concise output:
+
+```bash
+php artisan test --compact
+```
+
+### Latest Verified Test Results
+
+- **25 tests passed**
+- **57 assertions**
+- No failing tests in the reported run.
+
+These results verify that the current automated tests pass. They do not establish regression-selection accuracy or performance improvements.
+
+## Research Evaluation Plan
+
+The next research stage should evaluate TestMate against baseline approaches, such as simple changed-method name matching and running the full test suite.
+
+Potential evaluation metrics include:
+
+- **Selection Ratio:** The number of selected tests divided by the total number of available tests.
+- **Precision:** The proportion of selected tests that are relevant to the code change.
+- **Recall:** The proportion of all relevant tests that are successfully selected.
+- **Execution Time:** The time required to select and execute tests compared with running the full suite.
+- **Regression Detection:** Whether the selected tests detect known or deliberately introduced regressions.
+
+A credible evaluation requires benchmark projects, documented ground truth for relevant tests, and repeatable experiments. These metrics are proposed evaluation targets, not measured results.
+
+## Current Limitations
+
+- **Name-Based Dependency Matching:** Methods are matched by name, so unrelated classes using the same method name may produce false-positive caller matches.
+- **Incomplete Dependency Resolution:** The analyzer does not fully resolve class identities, object types, interfaces, inheritance, or runtime dispatch.
+- **Heuristic Test Selection:** Candidate tests are ranked using heuristic scoring rather than a complete semantic dependency graph.
+- **LLM Reliability:** Generated analysis and tests may be inaccurate, incomplete, or unsuitable and should be reviewed by a developer.
+- **No Formal Benchmark Yet:** Precision, recall, regression-detection effectiveness, and execution-time improvements have not yet been established through formal evaluation.
+
+## Future Work
+
+- Improve dependency resolution using class and type information.
+- Compare dependency-aware selection against name-based selection and full-suite execution.
+- Build benchmark datasets with documented ground-truth test relevance.
+- Measure precision, recall, selection ratio, and execution time.
+- Evaluate whether LLM reasoning improves test selection beyond static analysis alone.
+- Investigate how the approach can support reliable AI-assisted software development and maintenance.
+
+## Project Status
+
+Laravel TestMate is an experimental research prototype for investigating AI-assisted software engineering, program analysis, regression testing, and software maintenance.
+
+The current implementation provides a foundation for further development and empirical evaluation; it should not yet be considered a validated regression-testing optimization technique.
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+See the repository's license file for the applicable license.
