@@ -148,4 +148,92 @@ PHP;
 
         $this->assertContains('getText', $result['changed_methods']);
     }
+
+    
+public function test_it_finds_dependency_callers_and_returns_them_in_results(): void
+{
+    $fixturePath = app_path(
+        'Services/DependencyFixture'.uniqid().'.php'
+    );
+
+    $fixtureCode = <<<'PHP'
+<?php
+
+class DependencyFixture
+{
+    public function calculateInvoice(): float
+    {
+        return $this->calculateTotal();
+    }
+
+    public function calculateTotal(): float
+    {
+        return 100;
+    }
+}
+PHP;
+
+    \Illuminate\Support\Facades\File::put(
+        $fixturePath,
+        $fixtureCode
+    );
+
+    try {
+        $service = app(
+            \App\Services\TestSelectionService::class
+        );
+
+        $originalCode = <<<'PHP'
+<?php
+
+class InvoiceService
+{
+    public function calculateTotal(): int
+    {
+        return 50;
+    }
+
+    public function unrelatedMethod(): string
+    {
+        return 'unchanged';
+    }
+}
+PHP;
+
+        $updatedCode = <<<'PHP'
+<?php
+
+class InvoiceService
+{
+    public function calculateTotal(): int
+    {
+        return 100;
+    }
+
+    public function unrelatedMethod(): string
+    {
+        return 'unchanged';
+    }
+}
+PHP;
+
+        $result = $service->select(
+            $originalCode,
+            $updatedCode
+        );
+
+        $this->assertContains(
+            'calculateInvoice',
+            $result['dependency_callers']
+        );
+
+        $this->assertArrayHasKey(
+            'recommended_tests',
+            $result
+        );
+    } finally {
+        \Illuminate\Support\Facades\File::delete($fixturePath);
+    }
+}
+
 }

@@ -12,11 +12,16 @@ use PhpParser\PrettyPrinter\Standard;
 
 class TestSelectionService
 {
+    public function __construct(
+        private readonly PhpDependencyAnalyzer $dependencyAnalyzer
+    ) {}
+
     /**
-     * Identify changed PHP methods and recommend related test files.
+     * Identify changed methods, their callers, and related tests.
      *
      * @return array{
      *     changed_methods: array<int, string>,
+     *     dependency_callers: array<int, string>,
      *     recommended_tests: array<int, array{
      *         file: string,
      *         score: int,
@@ -31,32 +36,45 @@ class TestSelectionService
             $updatedCode
         );
 
+        $dependencyCallers = $this->findProjectCallers($changedMethods);
+
         $testFiles = File::allFiles(base_path('tests'));
         $recommendations = [];
 
         foreach ($testFiles as $file) {
-            $path = $file->getPathname();
-
             if (! str_ends_with($file->getFilename(), 'Test.php')) {
                 continue;
             }
 
+            $path = $file->getPathname();
             $content = File::get($path);
             $score = 0;
             $reasons = [];
 
             foreach ($changedMethods as $method) {
-                $methodName = strtolower($method);
+                $this->addMethodEvidence(
+                    $method,
+                    $file->getFilename(),
+                    $content,
+                    $score,
+                    $reasons,
+                    5,
+                    3,
+                    'Changed method'
+                );
+            }
 
-                if (str_contains(strtolower($file->getFilename()), $methodName)) {
-                    $score += 5;
-                    $reasons[] = "Test filename matches method '{$method}'.";
-                }
-
-                if (str_contains(strtolower($content), $methodName)) {
-                    $score += 3;
-                    $reasons[] = "Test content references method '{$method}'.";
-                }
+            foreach ($dependencyCallers as $caller) {
+                $this->addMethodEvidence(
+                    $caller,
+                    $file->getFilename(),
+                    $content,
+                    $score,
+                    $reasons,
+                    4,
+                    2,
+                    'Dependency caller'
+                );
             }
 
             if ($score > 0) {
@@ -74,13 +92,86 @@ class TestSelectionService
 
         usort(
             $recommendations,
-            fn (array $a, array $b): int => $b['score'] <=> $a['score']
+            fn (array $a, array $b): int =>
+                $b['score'] <=> $a['score']
         );
 
         return [
             'changed_methods' => $changedMethods,
+            'dependency_callers' => $dependencyCallers,
             'recommended_tests' => $recommendations,
         ];
+    }
+
+    /**
+     * Find project methods that call changed methods.
+     *
+     * This is name-based analysis, not complete type resolution.
+     *
+     * @param array<int, string> $changedMethods
+     * @return array<int, string>
+     */
+    private function findProjectCallers(array $changedMethods): array
+    {
+        if ($changedMethods === []) {
+            return [];
+        }
+
+        $callers = [];
+
+        foreach (File::allFiles(base_path('app')) as $file) {
+            if ($file->getExtension() !== 'php') {
+                continue;
+            }
+
+            $source = File::get($file->getPathname());
+
+            $callers = [
+                ...$callers,
+                ...$this->dependencyAnalyzer->findCallers(
+                    $source,
+                    $changedMethods
+                ),
+            ];
+        }
+
+        $changedNames = array_map('strtolower', $changedMethods);
+
+        $callers = array_filter(
+            array_unique($callers),
+            fn (string $caller): bool =>
+                ! in_array(strtolower($caller), $changedNames, true)
+        );
+
+        return array_values($callers);
+    }
+
+    /**
+     * Add filename/content matching evidence to a test's score.
+     *
+     * @param array<int, string> $reasons
+     */
+    private function addMethodEvidence(
+        string $method,
+        string $filename,
+        string $content,
+        int &$score,
+        array &$reasons,
+        int $filenamePoints,
+        int $contentPoints,
+        string $evidenceType
+    ): void {
+        $methodName = strtolower($method);
+
+        if (str_contains(strtolower($filename), $methodName)) {
+            $score += $filenamePoints;
+            $reasons[] = "{$evidenceType} '{$method}' matches the test filename.";
+        }
+
+        if (str_contains(strtolower($content), $methodName)) {
+            $score += $contentPoints;
+            $reasons[] = "{$evidenceType} '{$method}' appears in test content.";
+        }
     }
 
     /**
@@ -146,7 +237,6 @@ class TestSelectionService
             foreach ($nodes as $node) {
                 $name = $node->name->toString();
 
-                // Abstract methods and declarations without bodies.
                 if ($node->stmts === null) {
                     $body = '';
                 } else {
@@ -158,7 +248,6 @@ class TestSelectionService
 
             return $methods;
         } catch (Error) {
-            // Invalid or incomplete PHP input should not crash the request.
             return [];
         }
     }
